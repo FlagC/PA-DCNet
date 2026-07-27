@@ -1,0 +1,91 @@
+seed: 42
+Model:
+  name: PADCNet
+  version: "v1_512"
+  class_name: PADCNet
+  description: "PA-DCNet for static radio-map reconstruction with one-hot Tx input"
+  in_channels: 3
+  out_channels: 1
+  dims: [48,96,192,384]
+  depths: [2,3,4,2]
+  ssm_d_state: 32
+  ssm_d_conv: 4
+  ssm_expand: 2
+
+  polar_radial_bins: 512
+  polar_theta_bins: 512
+  polar_mamba_depths: [0,1,1,2]
+
+  use_pgcm: true
+  use_pgcm_at_stage1: false
+  task: "srm"
+
+data:
+  dataset_root_dir: ./data/RadioMapSeer
+  batch_size: 32
+  num_workers: 32
+  num_tx_per_map: 80
+  cars_simul: 'no'
+  cars_input: 'no'
+  fspl_input: 'no'
+  reverse_input: 'no'
+  thresh: 0.0
+  augmentation:
+    enabled: true
+    hflip_p: 0.5
+    vflip_p: 0.5
+    rot90: true
+
+training:
+  learning_rate: 0.0006
+  weight_decay: 0.0001
+  loss_weights:
+    l1: 0.4
+    mse: 0.1
+    ssim: 0.2
+    gradient: 0.3
+  lr_scheduler_patience: 8
+  lr_monitor: val_mse_loss
+  resume_from_checkpoint: ''
+
+paths:
+  results_root: results
+  tb_root: tb_logs
+
+trainer_config:
+  accelerator: gpu
+  devices: [0]
+  precision: 32-true
+  log_interval: 220
+  val_interval: 220
+  gradient_clip_val: 0.0
+
+fit_control:
+  train_mode: epoch
+  max_epochs: 60
+  max_steps: 100000
+
+callbacks:
+  checkpoint_best:
+    monitor: val_total_loss
+    filename: best-{epoch}-{step}-{val_total_loss:.4f}
+    save_top_k: 1
+    mode: min
+  checkpoint_latest:
+    filename: latest
+    every_n_epochs: 1
+    save_top_k: 1
+  early_stopping:
+    monitor: val_total_loss
+    patience: 14
+    mode: min
+    verbose: true
+  save_validation_images:
+    enabled: true
+    num_samples: 4
+    log_to_tensorboard: true
+    save_to_disk: false
+
+testing:
+  checkpoint_path: ''
+  test_batch_size: 1
