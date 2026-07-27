@@ -1,7 +1,7 @@
 seed: 42
 Model:
   name: PADCNet
-  version: "v1_512"
+  version: "v1"
   class_name: PADCNet
   description: "PA-DCNet for static radio-map reconstruction with one-hot Tx input"
   in_channels: 3
@@ -12,8 +12,8 @@ Model:
   ssm_d_conv: 4
   ssm_expand: 2
 
-  polar_radial_bins: 512
-  polar_theta_bins: 512
+  polar_radial_bins: 256
+  polar_theta_bins: 256
   polar_mamba_depths: [0,1,1,2]
 
   use_pgcm: true

@@ -4,17 +4,6 @@ Official implementation of **PA-DCNet**, a propagation-aware dual-coordinate net
 
 PA-DCNet models transmitter-centered global propagation in a polar coordinate branch and environmental obstruction correction in a Cartesian branch. Polar features spatially modulate Cartesian encoder features, and a gated dual-coordinate fusion produces the bottleneck representation for decoding.
 
-## Repository Contents
-
-- `models/padcnet.py`: PA-DCNet model implementation.
-- `datasetloader/DataLoader.py`: RadioMapSeer data loader.
-- `configs/srm.yaml`: static radio-map reconstruction configuration.
-- `configs/drm.yaml`: dynamic radio-map reconstruction configuration with vehicle input.
-- `src/train.py`, `src/eval.py`: training and prediction entry points.
-- `meterics/`: evaluation scripts for SRM, DRM, and thresholded outputs.
-
-Training logs, checkpoints, prediction images, datasets, and historical experimental models are intentionally excluded from this repository.
-
 ## Environment
 
 The released configuration was developed with Python 3.10, PyTorch 2.5.1 and CUDA 12.1.
@@ -22,17 +11,22 @@ The released configuration was developed with Python 3.10, PyTorch 2.5.1 and CUD
 ```bash
 python -m venv .venv
 source .venv/bin/activate
+# Install matching causal-conv1d and mamba-ssm wheels first; see below.
 pip install -r requirements.txt
 ```
 
-`mamba-ssm` requires a CUDA-enabled PyTorch installation compatible with the local CUDA toolchain. Install the matching PyTorch wheel first if your platform differs from CUDA 12.1.
+### Mamba-SSM CUDA Extension
+
+PA-DCNet uses `Mamba2` from `mamba-ssm`. `mamba-ssm` and `causal-conv1d` are CUDA extensions, so their prebuilt wheels must match the installed PyTorch, PyTorch CUDA runtime, Python version, and CXX11 ABI. Install a matching `causal-conv1d` wheel first, then a matching `mamba-ssm` wheel, before running `pip install -r requirements.txt`.
+
+Detailed installation instructions are available in [Chinese](Mamba_turtle.md) and [English](Mamba_turtle_en.md). The released setup was tested with Python 3.10, PyTorch 2.5.1+cu121, `causal-conv1d==1.6.0`, and `mamba-ssm==2.3.0`.
 
 ## Dataset Layout
 
-Place RadioMapSeer under `data/RadioMapSeer`, or change `data.dataset_root_dir` in the selected YAML file.
+Change `data.dataset_root_dir` in the selected YAML file.
 
 ```text
-data/RadioMapSeer/
+RadioMapSeer/
 ├── gain/
 │   ├── DPM/
 │   └── carsDPM/
@@ -49,8 +43,8 @@ The static task (SRM) consumes building map and Tx one-hot inputs. The loader st
 Run commands from the repository root.
 
 ```bash
-python src/train.py --config configs/srm.yaml
-python src/train.py --config configs/drm.yaml
+python src/train.py --config configs/PADCNet_srm.yaml
+python src/train.py --config configs/PADCNet_drm.yaml
 ```
 
 The SRM configuration currently retains the 512-bin setting used for polar-resolution ablation. Set `polar_radial_bins` and `polar_theta_bins` to the desired final setting before a reproduction run. Both outputs and newly generated TensorBoard logs are written locally under `results/` and `tb_logs/`, which are ignored by Git.
@@ -64,17 +58,13 @@ python src/make_config.py --task srm --version custom --polar-radial-bins 256 --
 ## Evaluation
 
 ```bash
-python src/eval.py --config configs/srm.yaml --checkpoint /path/to/checkpoint.ckpt --device cuda:0
-python meterics/evaluate_nocars.py --pred-dir results/PADCNet_v1_512/test_predictions
+python src/eval.py --config configs/PADCNet_srm.yaml --checkpoint /path/to/checkpoint.ckpt --device cuda:0
+python meterics/evaluate_nocars.py --pred-dir results/PADCNet_v1/test_predictions
 python meterics/evaluate_withcars.py --pred-dir results/PADCNet_drm/test_predictions
-python meterics/evaluate_threshold.py --pred-dir results/PADCNet_v1_512/test_predictions --threshold 0.2
 ```
 
 The metric scripts default to the RadioMapSeer dataset path above. Use `--dataset-root`, `--gt-dir`, `--limit`, and `--output` to override paths or save a metric summary.
 
-## Checkpoint Compatibility
-
-The public Python class is named `PADCNet`; the former internal class name was `PGCNet`. The rename does not alter module attribute names or tensor shapes, so existing `PGCNet` model weights can be loaded into `PADCNet` without retraining when the model configuration is unchanged.
 
 ## License
 
